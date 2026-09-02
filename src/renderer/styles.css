@@ -1,0 +1,143 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #1e1f24;
+  color: #e8e8ec;
+  display: flex;
+  flex-direction: column;
+}
+
+#tab-strip {
+  display: flex;
+  align-items: center;
+  background: #17181c;
+  padding: 6px 6px 0 6px;
+  -webkit-app-region: drag;
+}
+
+#tabs {
+  display: flex;
+  flex: 1;
+  overflow-x: auto;
+  -webkit-app-region: no-drag;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-right: 4px;
+  border-radius: 8px 8px 0 0;
+  background: #26282f;
+  color: #b7b8c2;
+  font-size: 12px;
+  max-width: 180px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.tab.active {
+  background: #33353e;
+  color: #fff;
+}
+
+.tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-close {
+  opacity: 0.6;
+  padding: 0 2px;
+}
+
+.tab-close:hover {
+  opacity: 1;
+}
+
+#new-tab-btn {
+  -webkit-app-region: no-drag;
+  border: none;
+  background: transparent;
+  color: #b7b8c2;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 10px;
+}
+
+#new-tab-btn:hover {
+  color: #fff;
+}
+
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #33353e;
+  padding: 8px;
+}
+
+#toolbar button {
+  border: none;
+  background: #26282f;
+  color: #e8e8ec;
+  border-radius: 6px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+#toolbar button:hover {
+  background: #3d3f49;
+}
+
+#address-bar {
+  flex: 1;
+  height: 30px;
+  border-radius: 6px;
+  border: none;
+  padding: 0 12px;
+  background: #1e1f24;
+  color: #e8e8ec;
+  font-size: 13px;
+}
+
+#address-bar:focus {
+  outline: 2px solid #e0a95e;
+}
+
+#content {
+  position: relative;
+  flex: 1;
+}
+
+.webview-pane {
+  position: absolute;
+  inset: 0;
+  display: none;
+}
+
+.webview-pane.active {
+  display: block;
+}
+
+.browser-webview {
+  width: 100%;
+  height: 100%;
+}
+
+.pom-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}

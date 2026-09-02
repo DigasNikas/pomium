@@ -1,0 +1,14 @@
+{
+  "name": "pomium",
+  "version": "0.1.0",
+  "description": "A Chromium-based desktop browser where every click bombs the screen with a Pomeranian.",
+  "main": "src/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^31.0.0"
+  },
+  "license": "MIT"
+}

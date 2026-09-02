@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Pomium</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="../pom-bomb.css" />
+</head>
+<body>
+  <div id="tab-strip">
+    <div id="tabs"></div>
+    <button id="new-tab-btn" title="New tab">+</button>
+  </div>
+  <div id="toolbar">
+    <button id="back-btn" title="Back">&#8592;</button>
+    <button id="fwd-btn" title="Forward">&#8594;</button>
+    <button id="reload-btn" title="Reload">&#8635;</button>
+    <input id="address-bar" type="text" placeholder="Search or enter address" />
+    <button id="go-btn" title="Go">Go</button>
+  </div>
+  <div id="content"></div>
+
+  <script src="../pom-bomb.js"></script>
+  <script src="./renderer.js"></script>
+</body>
+</html>
