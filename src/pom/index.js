@@ -49,8 +49,12 @@ export function createPoms({ canvas, assetsDir, onShake }) {
     if (loop) loop.stop();
     if (overlay) overlay.destroy();
     if (cache) cache.clear();
+    if (idleTimer !== null) {
+      clearTimeout(idleTimer);
+      idleTimer = null;
+    }
     overlay = null; engine = null; loop = null; cache = null;
-    roster = null; idleTimer = null;
+    roster = null;
     if (onShake) onShake(0, 0, true);
   }
 
@@ -65,6 +69,7 @@ export function createPoms({ canvas, assetsDir, onShake }) {
   function ensureStarted() {
     if (engine) {
       if (!loop.running) loop.start();
+      scheduleIdleCheck();
       return;
     }
 
