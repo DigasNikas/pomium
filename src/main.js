@@ -34,9 +34,20 @@ function createWindow() {
   });
 }
 
-ipcMain.on('pom-shake', (_event, { x, y, settled }) => {
+// Assumes a single window: the handler always targets mainWindow rather than
+// the sender. That holds today because `activate` only ever creates one
+// window when none exist. If a "new window" feature is added, this would
+// need to resolve the sender via BrowserWindow.fromWebContents instead.
+ipcMain.on('pom-shake', (_event, payload = {}) => {
+  const { x = 0, y = 0, settled = false } = payload;
   const win = mainWindow;
-  if (!win || win.isDestroyed() || win.isFullScreen() || win.isMaximized()) return;
+  if (!win || win.isDestroyed()) return;
+  if (win.isFullScreen() || win.isMaximized()) {
+    // Moot while maximised or fullscreen, and holding a stale base here would
+    // teleport the window on the next shake after it is restored somewhere else.
+    restingBounds = null;
+    return;
+  }
 
   if (settled) {
     if (restingBounds) {
@@ -45,6 +56,8 @@ ipcMain.on('pom-shake', (_event, { x, y, settled }) => {
     }
     return;
   }
+
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return;
 
   if (!restingBounds) restingBounds = win.getBounds();
   win.setBounds({
