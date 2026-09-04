@@ -1,4 +1,41 @@
 const path = require('path');
+const { ipcRenderer } = require('electron');
+
+// src/pom/ is ESM (scoped by its own package.json) while this file is
+// CommonJS, so it is pulled in with a dynamic import.
+let poms = null;
+let windowPoint = (x, y, rect) => ({ x: x + (rect ? rect.left : 0), y: y + (rect ? rect.top : 0) });
+
+(async () => {
+  const pomUrl = 'file://' + path.join(__dirname, '..', 'pom', 'index.js');
+  const coordsUrl = 'file://' + path.join(__dirname, '..', 'pom', 'coords.js');
+  const [{ createPoms }, coords] = await Promise.all([import(pomUrl), import(coordsUrl)]);
+  windowPoint = coords.windowPoint;
+
+  poms = createPoms({
+    canvas: document.getElementById('pom-overlay'),
+    assetsDir: path.join(__dirname, '..', '..', 'assets'),
+    onShake: (x, y, settled) => ipcRenderer.send('pom-shake', { x, y, settled }),
+  });
+
+  // Clicks on the chrome itself — tab strip, toolbar, address bar — spawn too.
+  // Page clicks cannot reach here; they arrive over IPC in createTab.
+  document.addEventListener('pointerdown', (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    poms.pointerDown(e.clientX);
+  }, { capture: true, passive: true });
+  document.addEventListener('pointermove', (e) => {
+    poms.pointerMove(e.clientX);
+  }, { capture: true, passive: true });
+  document.addEventListener('pointerup', (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    poms.pointerUp();
+  }, { capture: true, passive: true });
+  document.addEventListener('pointercancel', () => poms.pointerUp(), { capture: true, passive: true });
+  window.addEventListener('blur', () => poms.pointerUp(), { passive: true });
+
+  window.addEventListener('resize', () => poms.resize(), { passive: true });
+})();
 
 const WEBVIEW_PRELOAD_URL = 'file://' + path.join(__dirname, '..', 'webview-preload.js');
 const DEFAULT_URL = 'https://www.google.com';
@@ -33,13 +70,9 @@ function createTab(url) {
   webview.setAttribute('allowpopups', '');
   webview.src = url || DEFAULT_URL;
 
-  const overlay = document.createElement('div');
-  overlay.className = 'pom-overlay';
-
   const pane = document.createElement('div');
   pane.className = 'webview-pane';
   pane.appendChild(webview);
-  pane.appendChild(overlay);
   contentEl.appendChild(pane);
 
   const titleSpan = document.createElement('span');
@@ -61,7 +94,7 @@ function createTab(url) {
   tabBtn.addEventListener('click', () => activateTab(id));
   tabsEl.appendChild(tabBtn);
 
-  const tab = { id, webview, pane, overlay, tabBtn, titleSpan };
+  const tab = { id, webview, pane, tabBtn, titleSpan };
   tabs.push(tab);
 
   webview.addEventListener('page-title-updated', (e) => {
@@ -74,9 +107,14 @@ function createTab(url) {
     if (tab.id === activeId) addressBar.value = e.url;
   });
   webview.addEventListener('ipc-message', (e) => {
-    if (e.channel === 'pom-click') {
-      const { x, y } = e.args[0];
-      window.spawnPomBomb(x, y, overlay);
+    if (!poms) return;
+    const rect = pane.getBoundingClientRect();
+    if (e.channel === 'pom-down') {
+      poms.pointerDown(windowPoint(e.args[0].x, e.args[0].y, rect).x);
+    } else if (e.channel === 'pom-move') {
+      poms.pointerMove(windowPoint(e.args[0].x, e.args[0].y, rect).x);
+    } else if (e.channel === 'pom-up') {
+      poms.pointerUp();
     }
   });
 

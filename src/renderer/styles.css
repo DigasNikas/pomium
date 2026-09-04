@@ -136,8 +136,13 @@ body {
   height: 100%;
 }
 
-.pom-overlay {
-  position: absolute;
+/* Spans the whole window so poms fly over the tab strip and toolbar too.
+   pointer-events:none keeps every click reaching what it landed on. */
+#pom-overlay {
+  position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
+  z-index: 2147483647;
 }
