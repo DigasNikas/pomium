@@ -50,10 +50,14 @@ nothing below can be checked.
   visibly clipped at the top of the window where the chrome sits.
 
 - [ ] **Click near the left edge vs. near the right edge.** Click once near
-  the window's left edge, then once near the right edge. Expected: the
-  left-edge click enters higher and steeper than the right-edge one — the
-  spawn angle depends on horizontal position. Failure: both clicks look the
-  same regardless of x position.
+  the window's left edge, then once near the right edge. Expected: the two
+  spawns differ in both where they enter and how steep they fly. The
+  left-edge click spawns lower — roughly a fifth of the way down the
+  window — and travels at a steeper angle. The right-edge click spawns
+  higher, close to the top edge, and travels at a shallower, flatter
+  angle. Failure: both clicks enter at the same height and the same angle
+  regardless of x position, or the left-edge click is the one that enters
+  near the top.
 
 - [ ] **Hold and drag.** Press the mouse down on a page and drag it around
   without releasing. Expected: poms spawn continuously for as long as the
