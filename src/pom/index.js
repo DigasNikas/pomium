@@ -25,6 +25,7 @@ export function createPoms({ canvas, assetsDir, onShake }) {
   let cache = null;
   let roster = null;
   let idleTimer = null;
+  let resizeHandle = null;
 
   function frameCountFor(key) {
     return FRAME_COUNTS[key] ?? DEFAULT_CHARACTER_FRAMES;
@@ -52,6 +53,10 @@ export function createPoms({ canvas, assetsDir, onShake }) {
     if (idleTimer !== null) {
       clearTimeout(idleTimer);
       idleTimer = null;
+    }
+    if (resizeHandle !== null) {
+      cancelAnimationFrame(resizeHandle);
+      resizeHandle = null;
     }
     overlay = null; engine = null; loop = null; cache = null;
     roster = null;
@@ -97,7 +102,11 @@ export function createPoms({ canvas, assetsDir, onShake }) {
           engine.update();
           // The window takes x/y; the canvas takes rotation. Sending both to
           // both would double the shake.
-          if (onShake) onShake(engine.camera.x, engine.camera.y, engine.isIdle);
+          // isIdle means "no sprites left" — 96 frames — but the shake decays in 8
+          // updates. Treating a zero offset as settled releases the window as soon as
+          // the jolt actually ends, instead of pinning it for the sprite's whole life.
+          const settled = engine.isIdle || (engine.camera.x === 0 && engine.camera.y === 0);
+          if (onShake) onShake(engine.camera.x, engine.camera.y, settled);
           if (engine.isIdle) loop.stop();
         },
         render: () => renderScene(overlay.ctx, {
@@ -135,8 +144,15 @@ export function createPoms({ canvas, assetsDir, onShake }) {
     },
     resize() {
       if (!overlay || !engine) return;
-      overlay.resize();
-      engine.resize(overlay.width, overlay.height);
+      // The window fires resize continuously during a drag, and each resize
+      // reallocates a full-viewport backing store. Coalesce to one per frame.
+      if (resizeHandle !== null) return;
+      resizeHandle = requestAnimationFrame(() => {
+        resizeHandle = null;
+        if (!overlay || !engine) return;
+        overlay.resize();
+        engine.resize(overlay.width, overlay.height);
+      });
     },
     destroy: teardown,
   };
