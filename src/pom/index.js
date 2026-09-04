@@ -110,6 +110,7 @@ export function createPoms({ canvas, assetsDir, onShake }) {
       // non-null would throw again on every later click, forever.
       console.warn('[pomium] failed to start', error);
       if (overlay) overlay.destroy();
+      if (cache) cache.clear();
       overlay = null; engine = null; loop = null; cache = null; roster = null;
     }
   }
