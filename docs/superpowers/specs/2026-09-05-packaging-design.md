@@ -67,8 +67,19 @@ Artifact names state the platform plainly: `Pomium-1.0.0-mac.dmg` and
 ## Icons
 
 The repository has no `icons/` directory — that was the browser extension. One
-1024x1024 PNG is generated at `build/icon.png` from frame 60 of `char_04`,
-cropped square from the atlas, matching the icon the extension uses.
+1024x1024 PNG is generated at `build/icon.png` from **frame 57 of `char_07`**,
+a 200x200 square at `(0, 1781)` in that atlas.
+
+This deliberately differs from the browser extension, whose icon is frame 60 of
+`char_04` at 156x156. That source was fine there because the largest icon the
+extension ships is 128px; macOS renders app icons up to 1024, where a 156px
+source is visibly soft. Every larger frame in `char_04` was checked and rejected
+— they are all either fire blowout from the spawn or the near-black fade at the
+end of the animation. A sweep of every character's mid-animation frames found
+`char_07` frame 57 to be the largest clean, front-facing pose in the whole set.
+
+Icon quality is worth more here than matching the sibling product, since a soft
+or default icon is precisely what reads as unfinished to a non-technical user.
 
 electron-builder derives `.icns` and `.ico` from that PNG. If it does not derive
 them cleanly, both are generated explicitly rather than shipping the default
