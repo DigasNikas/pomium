@@ -9,6 +9,8 @@ drag to stream them continuously. The OS window itself jolts on every
 spawn and settles back to rest once the animation ends, and it keeps
 jolting for as long as a drag-stream is running.
 
+![Pomium demo](docs/media/demo.gif)
+
 ## Install
 
 Just want to use Pomium? Download it from the [latest release](https://github.com/DigasNikas/pomium/releases) and follow [`docs/install.md`](docs/install.md). Both installers are unsigned, and that guide walks through the warning your OS will show and exactly what to click past it.
