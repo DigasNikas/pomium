@@ -4,13 +4,20 @@ const { ipcRenderer } = require('electron');
 // src/pom/ is ESM (scoped by its own package.json) while this file is
 // CommonJS, so it is pulled in with a dynamic import.
 let poms = null;
-let windowPoint = null;
+let windowX = null;
+
+// Which document started the drag in progress: 'chrome', 'webview', or null
+// when nothing is held. Focus crossing between the host chrome and a
+// <webview> fires blur on whichever side is losing it, and a blur handler
+// that released unconditionally would kill a drag the user is still
+// physically holding. Whoever owns the drag owns its release.
+let dragSource = null;
 
 (async () => {
   const pomUrl = 'file://' + path.join(__dirname, '..', 'pom', 'index.js');
   const coordsUrl = 'file://' + path.join(__dirname, '..', 'pom', 'coords.js');
   const [{ createPoms }, coords] = await Promise.all([import(pomUrl), import(coordsUrl)]);
-  windowPoint = coords.windowPoint;
+  windowX = coords.windowX;
 
   poms = createPoms({
     canvas: document.getElementById('pom-overlay'),
@@ -22,17 +29,34 @@ let windowPoint = null;
   // Page clicks cannot reach here; they arrive over IPC in createTab.
   document.addEventListener('pointerdown', (e) => {
     if (e.button !== undefined && e.button !== 0) return;
+    dragSource = 'chrome';
     poms.pointerDown(e.clientX);
   }, { capture: true, passive: true });
   document.addEventListener('pointermove', (e) => {
+    // The engine only reads the pointer position while a chrome drag is
+    // held, so an unguarded handler would do a call per mouse move for
+    // nothing. Mirrors the held check in webview-preload.js.
+    if (dragSource !== 'chrome') return;
     poms.pointerMove(e.clientX);
   }, { capture: true, passive: true });
   document.addEventListener('pointerup', (e) => {
     if (e.button !== undefined && e.button !== 0) return;
+    dragSource = null;
     poms.pointerUp();
   }, { capture: true, passive: true });
-  document.addEventListener('pointercancel', () => poms.pointerUp(), { capture: true, passive: true });
-  window.addEventListener('blur', () => poms.pointerUp(), { passive: true });
+  document.addEventListener('pointercancel', () => {
+    dragSource = null;
+    poms.pointerUp();
+  }, { capture: true, passive: true });
+  window.addEventListener('blur', () => {
+    // Pressing into a <webview> blurs the host document even though the
+    // pointer never left the window. The page's own preload mirrors this
+    // handler for real window-level focus loss, so the webview releases
+    // its own drags and this one must not.
+    if (dragSource === 'webview') return;
+    dragSource = null;
+    poms.pointerUp();
+  }, { passive: true });
 
   window.addEventListener('resize', () => poms.resize(), { passive: true });
 })();
@@ -113,14 +137,16 @@ function createTab(url) {
   webview.addEventListener('ipc-message', (e) => {
     if (!poms) return;
     if (e.channel === 'pom-down') {
-      const { x = 0, y = 0 } = e.args[0] || {};
+      const { x = 0 } = e.args[0] || {};
       dragRect = pane.getBoundingClientRect();
-      poms.pointerDown(windowPoint(x, y, dragRect).x);
+      dragSource = 'webview';
+      poms.pointerDown(windowX(x, dragRect));
     } else if (e.channel === 'pom-move') {
-      const { x = 0, y = 0 } = e.args[0] || {};
-      poms.pointerMove(windowPoint(x, y, dragRect).x);
+      const { x = 0 } = e.args[0] || {};
+      poms.pointerMove(windowX(x, dragRect));
     } else if (e.channel === 'pom-up') {
       dragRect = null;
+      dragSource = null;
       poms.pointerUp();
     }
   });
