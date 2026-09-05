@@ -86,4 +86,7 @@ handover for whoever tests it next.
   makes drag-to-select on a page impractical for the duration. This is a
   side effect of shaking on every spawn, not a bug.
 - Single window, no bookmarks/history/downloads UI.
-- No packaging config (electron-builder/forge) — run from source.
+- The installers are unsigned, so every recipient has to click through a
+  first-run OS warning — see `docs/install.md` for exactly what to click.
+- No auto-update — a new version means downloading and running the
+  installer again.
