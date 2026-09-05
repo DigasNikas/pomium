@@ -1,39 +1,103 @@
 name: Release
 
-# Tagging is the whole release process. Pushing a v* tag runs the tests, builds
-# both installers, and publishes a GitHub Release with them attached.
+# Two ways to cut a release:
 #
-#   git tag v1.0.0 && git push origin v1.0.0
+#   1. Actions tab -> Release -> Run workflow -> enter a version (e.g. 1.2.3
+#      or 1.2.3-rc1). This bumps package.json, commits it to main, creates
+#      the tag, and runs the whole pipeline in one go.
+#   2. Tag main by hand: git tag v1.2.3 && git push origin v1.2.3
 #
-# A hyphenated tag (v1.1.0-rc1) publishes as a prerelease instead: downloadable,
-# but not marked latest and no release notification.
+# A hyphenated version (1.1.0-rc1) publishes as a prerelease instead:
+# downloadable, but not marked latest and no release notification.
 
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, e.g. 1.2.3 or 1.2.3-rc1 (leave off the v)'
+        required: true
 
 permissions:
   contents: write
 
 jobs:
+  # Only runs for the button-driven path. Bumps package.json to the requested
+  # version, commits it to main, and creates the tag from that commit — so
+  # the tag and the app it names are correct together instead of relying on
+  # someone to bump the version and tag it correctly by hand.
+  cut-tag:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Compute and validate the version
+        id: tag
+        run: |
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION#v}"
+          if [ -z "$VERSION" ]; then
+            echo "::error::version input is empty"
+            exit 1
+          fi
+          TAG="v${VERSION}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "::error::tag ${TAG} already exists — versions cannot be reused"
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+      - name: Bump package.json to the release version
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '${{ steps.tag.outputs.version }}';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+      - name: Commit the bump, then tag it
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- package.json; then
+            echo "package.json already at ${{ steps.tag.outputs.version }}, no commit needed"
+          else
+            git add package.json
+            git commit -m "chore: release ${{ steps.tag.outputs.tag }}"
+            git push origin HEAD:main
+          fi
+          git tag -a "${{ steps.tag.outputs.tag }}" -m "${{ steps.tag.outputs.tag }}"
+          git push origin "${{ steps.tag.outputs.tag }}"
+
   # The tag and the app must agree before anything is built. A release named
   # v1.1.0 containing an app that reports 1.0.0 is invisible until a user
   # reports it, and the version cannot be reused once published.
   verify:
+    needs: cut-tag
+    if: always() && (needs.cut-tag.result == 'success' || needs.cut-tag.result == 'skipped')
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ needs.cut-tag.outputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - name: Tag must match package.json version
         run: |
-          TAG="${GITHUB_REF_NAME#v}"
+          TAG="${RELEASE_TAG#v}"
           TAG="${TAG%%-*}"
           PKG="$(node -p "require('./package.json').version")"
           if [ "$TAG" != "$PKG" ]; then
-            echo "::error::tag ${GITHUB_REF_NAME} implies ${TAG}, package.json says ${PKG}"
+            echo "::error::tag ${RELEASE_TAG} implies ${TAG}, package.json says ${PKG}"
             exit 1
           fi
           echo "tag and package.json agree on ${PKG}"
@@ -41,7 +105,10 @@ jobs:
         run: npm test
 
   build:
-    needs: verify
+    needs: [verify, cut-tag]
+    if: always() && needs.verify.result == 'success'
+    env:
+      RELEASE_TAG: ${{ needs.cut-tag.outputs.tag || github.ref_name }}
     strategy:
       fail-fast: false
       matrix:
@@ -55,6 +122,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -68,10 +137,15 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: build
+    needs: [build, cut-tag]
+    if: always() && needs.build.result == 'success'
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ needs.cut-tag.outputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -82,12 +156,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="${RELEASE_TAG#v}"
           PRERELEASE=""
           case "$VERSION" in
             *-*) PRERELEASE="--prerelease" ;;
           esac
-          gh release create "$GITHUB_REF_NAME" \
+          gh release create "$RELEASE_TAG" \
             artifacts/* \
             --title "Pomium ${VERSION}" \
             --notes "Install instructions: https://github.com/${GITHUB_REPOSITORY}/blob/main/docs/install.md
