@@ -1,0 +1,99 @@
+name: Release
+
+# Tagging is the whole release process. Pushing a v* tag runs the tests, builds
+# both installers, and publishes a GitHub Release with them attached.
+#
+#   git tag v1.0.0 && git push origin v1.0.0
+#
+# A hyphenated tag (v1.1.0-rc1) publishes as a prerelease instead: downloadable,
+# but not marked latest and no release notification.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  # The tag and the app must agree before anything is built. A release named
+  # v1.1.0 containing an app that reports 1.0.0 is invisible until a user
+  # reports it, and the version cannot be reused once published.
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Tag must match package.json version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          TAG="${TAG%%-*}"
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} implies ${TAG}, package.json says ${PKG}"
+            exit 1
+          fi
+          echo "tag and package.json agree on ${PKG}"
+      - name: Test
+        run: npm test
+
+  build:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            script: dist:mac
+            artifact: 'dist/*.dmg'
+          - os: windows-latest
+            script: dist:win
+            artifact: 'dist/*.exe'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - name: Build installer
+        run: npm run ${{ matrix.script }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.os }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: List what will be published
+        run: ls -la artifacts
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          PRERELEASE=""
+          case "$VERSION" in
+            *-*) PRERELEASE="--prerelease" ;;
+          esac
+          gh release create "$GITHUB_REF_NAME" \
+            artifacts/* \
+            --title "Pomium ${VERSION}" \
+            --notes "Install instructions: https://github.com/${GITHUB_REPOSITORY}/blob/main/docs/install.md
+
+          **macOS** — download the \`.dmg\`, open it, drag Pomium to Applications.
+          **Windows** — download the \`.exe\` and run it.
+
+          Both are unsigned, so the first launch shows a warning. The install guide above walks through it." \
+            $PRERELEASE
