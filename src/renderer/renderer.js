@@ -4,7 +4,7 @@ const { ipcRenderer } = require('electron');
 // src/pom/ is ESM (scoped by its own package.json) while this file is
 // CommonJS, so it is pulled in with a dynamic import.
 let poms = null;
-let windowPoint = (x, y, rect) => ({ x: x + (rect ? rect.left : 0), y: y + (rect ? rect.top : 0) });
+let windowPoint = null;
 
 (async () => {
   const pomUrl = 'file://' + path.join(__dirname, '..', 'pom', 'index.js');
@@ -97,6 +97,10 @@ function createTab(url) {
   const tab = { id, webview, pane, tabBtn, titleSpan };
   tabs.push(tab);
 
+  // pom-move only arrives while a drag is held (see webview-preload.js), so
+  // the pane's rect only needs reading once per drag rather than per message.
+  let dragRect = null;
+
   webview.addEventListener('page-title-updated', (e) => {
     titleSpan.textContent = e.title;
   });
@@ -108,12 +112,15 @@ function createTab(url) {
   });
   webview.addEventListener('ipc-message', (e) => {
     if (!poms) return;
-    const rect = pane.getBoundingClientRect();
     if (e.channel === 'pom-down') {
-      poms.pointerDown(windowPoint(e.args[0].x, e.args[0].y, rect).x);
+      const { x = 0, y = 0 } = e.args[0] || {};
+      dragRect = pane.getBoundingClientRect();
+      poms.pointerDown(windowPoint(x, y, dragRect).x);
     } else if (e.channel === 'pom-move') {
-      poms.pointerMove(windowPoint(e.args[0].x, e.args[0].y, rect).x);
+      const { x = 0, y = 0 } = e.args[0] || {};
+      poms.pointerMove(windowPoint(x, y, dragRect).x);
     } else if (e.channel === 'pom-up') {
+      dragRect = null;
       poms.pointerUp();
     }
   });

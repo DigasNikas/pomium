@@ -111,6 +111,20 @@ nothing below can be checked.
   uncaught exception, failed asset fetch, or repeated warning while poms
   are spawning.
 
+- [ ] **Blur race between the chrome and a page.** `renderer.js` releases a
+  drag on the host window's `blur`; `webview-preload.js` releases a drag on
+  the guest page's `blur`. Moving focus into a child frame fires `blur` on
+  the parent, so pressing into a `<webview>` from the chrome (or vice
+  versa) can fire a spurious release right as the new press starts. Click
+  somewhere in the chrome (e.g. the address bar) to focus it, then
+  press-and-hold inside a page and drag without releasing; then do the
+  reverse — press-and-hold on the chrome right after interacting with a
+  page. Expected: in both directions, the *first* hold-and-drag after the
+  focus switch streams poms continuously for as long as the button is
+  held. Failure: it spawns only a single pair despite the continued hold —
+  this is the known blur-race hazard described above, not a fluke, and is
+  worth reporting rather than dismissing.
+
 ## Not a bug: continuous shake during a drag-stream
 
 While a hold-and-drag stream is running, the window shakes continuously

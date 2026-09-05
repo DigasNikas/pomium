@@ -4,6 +4,9 @@
   "description": "A Chromium-based desktop browser where every click bombs the screen with a Pomeranian.",
   "main": "src/main.js",
   "private": true,
+  "engines": {
+    "node": ">=21"
+  },
   "scripts": {
     "start": "electron .",
     "test": "node --test \"test/**/*.test.js\""
