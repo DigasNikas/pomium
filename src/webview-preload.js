@@ -48,17 +48,21 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // A drag can end without pointerup: alt-tabbing away, or a native drag
   // starting on an image or link. Without these the stream never stops.
-  // Left unconditional (unlike the pointer handlers above): a page firing
-  // these itself can only end a drag early, never extend one, so an
-  // isTrusted guard here would add nothing.
-  window.addEventListener('blur', () => {
+  // Left unconditional on isTrusted (unlike the pointer handlers above): a
+  // page firing these itself can only end a drag early, never extend one,
+  // so an isTrusted guard here would add nothing.
+  //
+  // The `held` guard is load-bearing, though. Pressing on the host chrome
+  // while this page had focus blurs it, and reporting a release for a drag
+  // this page never started would cancel the chrome's drag instead.
+  function release() {
+    if (!held) return;
     held = false;
     ipcRenderer.sendToHost('pom-up');
-  }, OPTS);
+  }
+
+  window.addEventListener('blur', release, OPTS);
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      held = false;
-      ipcRenderer.sendToHost('pom-up');
-    }
+    if (document.hidden) release();
   }, OPTS);
 });

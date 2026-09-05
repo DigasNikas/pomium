@@ -26,6 +26,18 @@ export function createPoms({ canvas, assetsDir, onShake }) {
   let roster = null;
   let idleTimer = null;
   let resizeHandle = null;
+  // Last offset handed to onShake. The shake decays in SHAKE_DURATION updates
+  // but sprites live far longer, so an unconditional send would repeat the
+  // same settled payload across the process boundary for the rest of their
+  // life and the whole idle window after it.
+  let lastShake = null;
+
+  function emitShake(x, y, settled) {
+    if (!onShake) return;
+    if (lastShake && lastShake.x === x && lastShake.y === y && lastShake.settled === settled) return;
+    lastShake = { x, y, settled };
+    onShake(x, y, settled);
+  }
 
   function frameCountFor(key) {
     return FRAME_COUNTS[key] ?? DEFAULT_CHARACTER_FRAMES;
@@ -60,7 +72,8 @@ export function createPoms({ canvas, assetsDir, onShake }) {
     }
     overlay = null; engine = null; loop = null; cache = null;
     roster = null;
-    if (onShake) onShake(0, 0, true);
+    lastShake = null;
+    emitShake(0, 0, true);
   }
 
   function scheduleIdleCheck() {
@@ -106,7 +119,7 @@ export function createPoms({ canvas, assetsDir, onShake }) {
           // updates. Treating a zero offset as settled releases the window as soon as
           // the jolt actually ends, instead of pinning it for the sprite's whole life.
           const settled = engine.isIdle || (engine.camera.x === 0 && engine.camera.y === 0);
-          if (onShake) onShake(engine.camera.x, engine.camera.y, settled);
+          emitShake(engine.camera.x, engine.camera.y, settled);
           if (engine.isIdle) loop.stop();
         },
         render: () => renderScene(overlay.ctx, {
@@ -126,6 +139,7 @@ export function createPoms({ canvas, assetsDir, onShake }) {
       if (overlay) overlay.destroy();
       if (cache) cache.clear();
       overlay = null; engine = null; loop = null; cache = null; roster = null;
+      lastShake = null;
     }
   }
 
