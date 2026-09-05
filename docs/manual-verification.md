@@ -111,19 +111,28 @@ nothing below can be checked.
   uncaught exception, failed asset fetch, or repeated warning while poms
   are spawning.
 
-- [ ] **Blur race between the chrome and a page.** `renderer.js` releases a
-  drag on the host window's `blur`; `webview-preload.js` releases a drag on
-  the guest page's `blur`. Moving focus into a child frame fires `blur` on
-  the parent, so pressing into a `<webview>` from the chrome (or vice
-  versa) can fire a spurious release right as the new press starts. Click
-  somewhere in the chrome (e.g. the address bar) to focus it, then
+- [ ] **Drag across a focus switch between the chrome and a page.** Both
+  sides release a drag on `blur`, and moving focus into a child frame fires
+  `blur` on the parent, so each side now only releases a drag it started
+  itself (`dragSource` in `renderer.js`, `held` in `webview-preload.js`).
+  Click somewhere in the chrome (e.g. the address bar) to focus it, then
   press-and-hold inside a page and drag without releasing; then do the
   reverse — press-and-hold on the chrome right after interacting with a
   page. Expected: in both directions, the *first* hold-and-drag after the
   focus switch streams poms continuously for as long as the button is
-  held. Failure: it spawns only a single pair despite the continued hold —
-  this is the known blur-race hazard described above, not a fluke, and is
-  worth reporting rather than dismissing.
+  held. Failure: it spawns only a single pair despite the continued hold.
+
+- [ ] **Maximise or fullscreen mid-shake, then come back.** Note where the
+  window sits. Press-and-hold to start a stream so the window is actively
+  jolting, and while still holding, maximise it (or press F11). Release,
+  then unmaximise / leave fullscreen. Repeat four or five times. Expected:
+  the window returns to the same spot every time. Failure: it creeps a few
+  pixels further each round trip.
+
+- [ ] **Resize during a hold.** Press-and-hold anywhere so poms are
+  streaming, and while still holding, drag a window edge or corner.
+  Expected: the window resizes and stays resized. Failure: the size snaps
+  back to what it was when the hold started.
 
 ## Not a bug: continuous shake during a drag-stream
 
