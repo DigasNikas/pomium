@@ -1,18 +1,23 @@
 {
   "name": "pomium",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "A Chromium-based desktop browser where every click bombs the screen with a Pomeranian.",
   "main": "src/main.js",
+  "author": "Diogo Nicolau",
   "private": true,
   "engines": {
     "node": ">=21"
   },
   "scripts": {
     "start": "electron .",
-    "test": "node --test \"test/**/*.test.js\""
+    "test": "node --test \"test/**/*.test.js\"",
+    "dist": "electron-builder --publish never",
+    "dist:mac": "electron-builder --mac --publish never",
+    "dist:win": "electron-builder --win --publish never"
   },
   "devDependencies": {
-    "electron": "^44.2.0"
+    "electron": "^44.2.0",
+    "electron-builder": "^26.15.3"
   },
   "license": "MIT"
 }

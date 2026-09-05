@@ -1,0 +1,34 @@
+appId: com.digasnikas.pomium
+productName: Pomium
+
+# Only what the app needs at runtime. Everything else is dead weight in
+# every download.
+files:
+  - src/**/*
+  - assets/**/*
+  - package.json
+
+directories:
+  output: dist
+  buildResources: build
+
+# Names state the platform plainly, so someone choosing a download does not
+# have to interpret an architecture triple.
+mac:
+  target:
+    - target: dmg
+      arch: [universal]
+  category: public.app-category.utilities
+  artifactName: Pomium-${version}-mac.${ext}
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: Pomium-${version}-win.${ext}
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
