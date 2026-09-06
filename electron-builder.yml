@@ -2,11 +2,17 @@ appId: com.digasnikas.pomium
 productName: Pomium
 
 # Only what the app needs at runtime. Everything else is dead weight in
-# every download.
+# every download. The negation matters now that `electron` itself is an
+# optionalDependency (so `npm install -g pomium` pulls it in): without it,
+# electron-builder's default node_modules resolution bundles the entire
+# electron npm package — its own ~1MB of JS plus @electron/get, extract-zip
+# and the rest of its install-time dependency tree — inside the very app
+# that already IS the Electron runtime.
 files:
   - src/**/*
   - assets/**/*
   - package.json
+  - '!node_modules/**/*'
 
 directories:
   output: dist

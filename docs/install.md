@@ -19,6 +19,15 @@ Pomium is a desktop browser where every click sends a pair of Pomeranians sweepi
 
 After this first launch, Pomium opens normally, with no further warnings.
 
+## Prefer the command line?
+
+```sh
+npm install -g pomium
+pomium
+```
+
+This skips both first-run warnings above, since it downloads Electron through npm rather than an unsigned installer. It pulls the full Electron runtime (~150MB) as part of the install.
+
 ## Why the warning shows up
 
 Pomium isn't signed with a developer certificate. Those cost a few hundred dollars a year, and this is a toy project, not a business. Both operating systems flag any app that isn't signed, whether or not it's actually a problem. The warning means unrecognised, not infected.

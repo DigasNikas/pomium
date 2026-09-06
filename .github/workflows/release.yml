@@ -8,7 +8,13 @@ name: Release
 #   2. Tag main by hand: git tag v1.2.3 && git push origin v1.2.3
 #
 # A hyphenated version (1.1.0-rc1) publishes as a prerelease instead:
-# downloadable, but not marked latest and no release notification.
+# downloadable, but not marked latest and no release notification, and on npm
+# it publishes under the "next" dist-tag rather than "latest".
+#
+# Publishing to npm needs an NPM_TOKEN secret (an npm automation token with
+# publish rights on the pomium package) set in the repo's Settings > Secrets
+# and variables > Actions. Without it, publish-npm fails and the GitHub
+# release above is unaffected — the dmg and exe still publish either way.
 
 on:
   push:
@@ -168,6 +174,39 @@ jobs:
 
           **macOS** — download the \`.dmg\`, open it, drag Pomium to Applications.
           **Windows** — download the \`.exe\` and run it.
+          **npm** — \`npm install -g pomium\` (skips both warnings above, pulls Electron through npm instead).
 
-          Both are unsigned, so the first launch shows a warning. The install guide above walks through it." \
+          Both installers are unsigned, so the first launch shows a warning. The install guide above walks through it." \
             $PRERELEASE
+
+  # Runs on both trigger paths, unlike cut-tag. A hand-pushed tag should
+  # still publish to npm — it's the only path releases took before the
+  # dispatch button existed, and dropping it here would make the two ways
+  # of cutting a release behave differently for no reason.
+  publish-npm:
+    needs: [publish, cut-tag]
+    if: always() && needs.publish.result == 'success'
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ needs.cut-tag.outputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          VERSION="${RELEASE_TAG#v}"
+          # A hyphenated version is a prerelease: publish it, but don't let it
+          # become what `npm install -g pomium` gets by default.
+          NPM_TAG="latest"
+          case "$VERSION" in
+            *-*) NPM_TAG="next" ;;
+          esac
+          npm publish --access public --tag "$NPM_TAG"
+          echo "Published pomium@${VERSION} to npm as dist-tag ${NPM_TAG}"

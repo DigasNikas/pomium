@@ -15,6 +15,8 @@ jolting for as long as a drag-stream is running.
 
 Just want to use Pomium? Download it from the [latest release](https://github.com/DigasNikas/pomium/releases) and follow [`docs/install.md`](docs/install.md). Both installers are unsigned, and that guide walks through the warning your OS will show and exactly what to click past it.
 
+Already have Node? `npm install -g pomium` skips both installers and their first-run warnings, at the cost of pulling the full Electron runtime through npm instead. Same guide covers it.
+
 The instructions below are for running Pomium from source, which is what you want if you're developing it, not installing it.
 
 ## Run
@@ -66,7 +68,7 @@ update them from screen.toys if they ever change.
 npm test
 ```
 
-Runs 66 tests via `node --test`, no dependencies beyond Node itself. They
+Runs 68 tests via `node --test`, no dependencies beyond Node itself. They
 cover the engine's maths (velocity, jitter, depth), sprite lifecycle,
 atlas parsing, cache eviction, render-argument construction, and
 coordinate translation — everything in `src/pom/` that doesn't need a
@@ -91,4 +93,4 @@ handover for whoever tests it next.
 - The installers are unsigned, so every recipient has to click through a
   first-run OS warning — see `docs/install.md` for exactly what to click.
 - No auto-update — a new version means downloading and running the
-  installer again.
+  installer again, or `npm install -g pomium` again for the npm path.
